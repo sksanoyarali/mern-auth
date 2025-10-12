@@ -1,0 +1,211 @@
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import User from '../models/user.model.js'
+import transporter from '../config/nodemailer.js'
+const registerUser = async (req, res) => {
+  const { name, email, password } = req.body
+  if (!name || !email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing Details',
+    })
+  }
+  try {
+    const existingUser = await User.findOne({ email })
+
+    if (existingUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'User already exists',
+      })
+    }
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+    })
+
+    await user.save()
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    })
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
+
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: 'Welcome to My-Auth',
+      text: `Hello ${name}, your account has been created successfully!`,
+    }
+
+    await transporter.sendMail(mailOptions)
+    return res.status(200).json({
+      success: true,
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+const loginUser = async (req, res) => {
+  const { email, password } = req.body
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email and password are required',
+    })
+  }
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Email',
+      })
+    }
+
+    const isMatched = await bcrypt.compare(password, user.password)
+
+    if (!isMatched) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Password',
+      })
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    })
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
+    return res.status(200).json({
+      success: true,
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+const logout = async (req, res) => {
+  try {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    })
+    return res.status(200).json({
+      success: true,
+      message: 'logout successfully',
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+// send verification otp to user
+const sendVerifyOtp = async (req, res) => {
+  try {
+    const userId = req.user
+    const user = await User.findById(userId)
+    if (user.isAccountVerified) {
+      return res.json({
+        success: false,
+        message: 'Account Already verified',
+      })
+    }
+    const otp = String(Math.floor(100000 + Math.random() * 900000))
+
+    user.verifyOtp = otp
+    user.verifyOtpExpireAt = Date.now() + 24 * 60 * 60 * 1000
+
+    await user.save()
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: 'Account Verification OTP',
+      text: `Your OTP is${otp}. Verify your Account using this OTP `,
+    }
+    await transporter.sendMail(mailOptions)
+    res
+      .status(200)
+      .json({ success: true, message: 'Verification otp sent on on email' })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+const verifyEmail = async (req, res) => {
+  const { otp } = req.body
+  const userId = req.user
+  if (!userId || !otp) {
+    return res.status(401).json({
+      success: false,
+      message: 'Missing Details',
+    })
+  }
+  try {
+    const user = await User.findById(userId)
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User Not Found',
+      })
+    }
+    if (user.verifyOtp === '' || user.verifyOtp != otp) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid OTP',
+      })
+    }
+    if (user.verifyOtpExpireAt < Date.now()) {
+      return res.status(401).json({
+        success: false,
+        message: 'OTP expired',
+      })
+    }
+    user.isAccountVerified = true
+    user.verifyOtp = ''
+    user.verifyOtpExpireAt = 0
+    await user.save()
+    return res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+export { registerUser, loginUser, logout, sendVerifyOtp, verifyEmail }
