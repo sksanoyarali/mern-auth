@@ -14,7 +14,7 @@ const registerUser = async (req, res) => {
     const existingUser = await User.findOne({ email })
 
     if (existingUser) {
-      return res.status(401).json({
+      return res.status(409).json({
         success: false,
         message: 'User already exists',
       })
@@ -47,7 +47,7 @@ const registerUser = async (req, res) => {
     }
 
     await transporter.sendMail(mailOptions)
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
     })
   } catch (error) {
@@ -70,7 +70,7 @@ const loginUser = async (req, res) => {
   try {
     const user = await User.findOne({ email })
     if (!user) {
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
         message: 'Invalid Email',
       })
@@ -79,7 +79,7 @@ const loginUser = async (req, res) => {
     const isMatched = await bcrypt.compare(password, user.password)
 
     if (!isMatched) {
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
         message: 'Invalid Password',
       })
@@ -132,7 +132,7 @@ const sendVerifyOtp = async (req, res) => {
     const userId = req.user
     const user = await User.findById(userId)
     if (user.isAccountVerified) {
-      return res.json({
+      return res.status(409).json({
         success: false,
         message: 'Account Already verified',
       })
@@ -147,7 +147,7 @@ const sendVerifyOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: 'Account Verification OTP',
-      text: `Your OTP is${otp}. Verify your Account using this OTP `,
+      text: `Your OTP is ${otp}. Verify your Account using this OTP `,
     }
     await transporter.sendMail(mailOptions)
     res
@@ -166,7 +166,7 @@ const verifyEmail = async (req, res) => {
   const { otp } = req.body
   const userId = req.user
   if (!userId || !otp) {
-    return res.status(401).json({
+    return res.status(400).json({
       success: false,
       message: 'Missing Details',
     })
@@ -181,13 +181,13 @@ const verifyEmail = async (req, res) => {
       })
     }
     if (user.verifyOtp === '' || user.verifyOtp != otp) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: 'Invalid OTP',
       })
     }
     if (user.verifyOtpExpireAt < Date.now()) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: 'OTP expired',
       })
@@ -208,4 +208,119 @@ const verifyEmail = async (req, res) => {
     })
   }
 }
-export { registerUser, loginUser, logout, sendVerifyOtp, verifyEmail }
+
+// check if user is authenticated
+const isAuthenticated = async (req, res) => {
+  try {
+    return res.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+//send password-reset otp
+const sendResetPasswordOtp = async (req, res) => {
+  const { email } = req.body
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email is required',
+    })
+  }
+  try {
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      })
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000))
+
+    user.resetOtp = otp
+    user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000
+    await user.save()
+
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: 'Password Reset Otp',
+      text: `Your OTP for reseting your password is ${otp}. Use this OTP to proceed with resetting yyour Password`,
+    }
+    await transporter.sendMail(mailOptions)
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email',
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+const verifyResetPasswordEmail = async (req, res) => {
+  const { email, otp, newPassword } = req.body
+  const userId = req.user
+  if (!email || !newPassword || !otp) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing Details',
+    })
+  }
+
+  try {
+    const user = await User.findOne({ email })
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User Not Found',
+      })
+    }
+    if (user.resetOtp === '' || user.resetOtp != otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP',
+      })
+    }
+    if (user.resetOtpExpireAt < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP expired',
+      })
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    user.password = hashedPassword
+    user.resetOtp = ''
+    user.resetOtpExpireAt = 0
+    await user.save()
+    return res.status(200).json({
+      success: true,
+      message: 'Reset password successfully',
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+export {
+  registerUser,
+  loginUser,
+  logout,
+  sendVerifyOtp,
+  verifyEmail,
+  isAuthenticated,
+  sendResetPasswordOtp,
+  verifyResetPasswordEmail,
+}
