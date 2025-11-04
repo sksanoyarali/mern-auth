@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/user.model.js'
 import transporter from '../config/nodemailer.js'
+import { cookieOption } from '../utils/constants.js'
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body
   if (!name || !email || !password) {
@@ -21,23 +22,16 @@ const registerUser = async (req, res) => {
     }
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const user = new User({
+    const user = await User.create({
       name,
       email,
       password: hashedPassword,
     })
 
-    await user.save()
-
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: '7d',
     })
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
+    res.cookie('token', token, cookieOption)
 
     const mailOptions = {
       from: process.env.SENDER_EMAIL,
@@ -88,12 +82,7 @@ const loginUser = async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: '7d',
     })
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
+    res.cookie('token', token, cookieOption)
     return res.status(200).json({
       success: true,
     })
@@ -109,9 +98,8 @@ const loginUser = async (req, res) => {
 const logout = async (req, res) => {
   try {
     res.clearCookie('token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      ...cookieOption,
+      maxAge: undefined,
     })
     return res.status(200).json({
       success: true,
