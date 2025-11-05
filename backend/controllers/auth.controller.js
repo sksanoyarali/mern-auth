@@ -2,7 +2,12 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import User from '../models/user.model.js'
 import transporter from '../config/nodemailer.js'
-import { cookieOption } from '../utils/constants.js'
+const cookieOption = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+}
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body
   if (!name || !email || !password) {

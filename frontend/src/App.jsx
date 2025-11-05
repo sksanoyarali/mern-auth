@@ -4,10 +4,11 @@ import Home from './pages/Home'
 import EmailVerify from './pages/EmailVerify'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
-
+import { Toaster } from 'react-hot-toast'
 const App = () => {
   return (
     <div>
+      <Toaster />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
