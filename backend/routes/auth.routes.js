@@ -19,7 +19,7 @@ authRouter.post('/login', loginUser)
 
 authRouter.post('/logout', logout)
 
-authRouter.get('/send-verify-otp', userAuth, sendVerifyOtp)
+authRouter.post('/send-verify-otp', userAuth, sendVerifyOtp)
 
 authRouter.post('/verify-otp', userAuth, verifyEmail)
 
