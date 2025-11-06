@@ -21,7 +21,7 @@ authRouter.post('/logout', logout)
 
 authRouter.post('/send-verify-otp', userAuth, sendVerifyOtp)
 
-authRouter.post('/verify-otp', userAuth, verifyEmail)
+authRouter.post('/verify-account', userAuth, verifyEmail)
 
 authRouter.get('/is-auth', userAuth, isAuthenticated)
 
