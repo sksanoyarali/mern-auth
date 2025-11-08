@@ -13,7 +13,7 @@ const port = process.env.PORT || 3000
 connectDb()
 app.use(
   cors({
-    origin: 'http://localhost:5173',
+    origin: ['http://localhost:5173', 'https://mern-auth-navy-five.vercel.app'],
     credentials: true,
   })
 )
