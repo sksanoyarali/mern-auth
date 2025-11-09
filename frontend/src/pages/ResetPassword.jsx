@@ -2,7 +2,6 @@ import React, { useContext, useRef, useState } from 'react'
 import { assets } from '../assets/assets'
 import { useNavigate } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
-import axios from 'axios'
 import toast from 'react-hot-toast'
 
 const ResetPassword = () => {
@@ -15,8 +14,7 @@ const ResetPassword = () => {
   const [otp, setOtp] = useState(0)
   const [isOtpSubmitted, setIsOtpSubmitted] = useState(false)
 
-  axios.defaults.withCredentials = true
-  const { backendUrl, isLoggedIn, userData, getUserData } =
+  const { backendUrl, isLoggedIn, userData, getUserData, axios } =
     useContext(AppContext)
   const handleInput = (e, index) => {
     if (e.target.value.length > 0 && index < inputRefs.current.length - 1) {
