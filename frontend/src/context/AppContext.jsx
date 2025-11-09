@@ -50,6 +50,7 @@ export const AppContextProvider = ({ children }) => {
     userData,
     setUserData,
     getUserData,
+    axios,
   }
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

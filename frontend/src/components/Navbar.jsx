@@ -2,16 +2,14 @@ import React, { useContext } from 'react'
 import { assets } from '../assets/assets'
 import { useNavigate } from 'react-router-dom'
 import { AppContext } from '../context/AppContext'
-import axios from 'axios'
 import toast from 'react-hot-toast'
 const Navbar = () => {
   const navigate = useNavigate()
-  const { userData, backendUrl, setUserData, setIsLoggedIn } =
+  const { userData, backendUrl, setUserData, setIsLoggedIn, axios } =
     useContext(AppContext)
 
   const sendVerificationOtp = async () => {
     try {
-      axios.defaults.withCredentials = true
       const { data } = await axios.post(
         `${backendUrl}/api/auth/send-verify-otp`
       )
@@ -31,7 +29,6 @@ const Navbar = () => {
   }
   const logout = async () => {
     try {
-      axios.defaults.withCredentials = true
       const { data } = await axios.post(`${backendUrl}/api/auth/logout`)
       if (data.success) {
         setIsLoggedIn(false)
