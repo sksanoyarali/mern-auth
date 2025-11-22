@@ -2,12 +2,14 @@ import mongoose from 'mongoose'
 
 const connectDb = async () => {
   try {
-    mongoose.connection.on('connected', () => {
-      console.log('Database connected successfully')
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: 'mern-auth',
     })
-    await mongoose.connect(`${process.env.MONGODB_URI}/mern-auth`)
+
+    console.log(`MongoDB connected: ${conn.connection.host}`)
   } catch (error) {
-    console.log('Error in Database connection')
+    console.error('MongoDB connection error:', error.message)
+    process.exit(1) // Stop server if DB fails
   }
 }
 
