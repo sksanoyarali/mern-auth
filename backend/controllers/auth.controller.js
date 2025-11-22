@@ -154,7 +154,7 @@ const sendVerifyOtp = async (req, res) => {
     await transporter.sendMail(mailOptions)
     res
       .status(200)
-      .json({ success: true, message: 'Verification otp sent on on email' })
+      .json({ success: true, message: 'Verification otp sent on  email' })
   } catch (error) {
     console.error(error)
     return res.status(500).json({
@@ -188,12 +188,14 @@ const verifyEmail = async (req, res) => {
         message: 'Invalid OTP',
       })
     }
+
     if (user.verifyOtpExpireAt < Date.now()) {
       return res.status(400).json({
         success: false,
         message: 'OTP expired',
       })
     }
+
     user.isAccountVerified = true
     user.verifyOtp = ''
     user.verifyOtpExpireAt = 0
@@ -242,10 +244,10 @@ const sendResetPasswordOtp = async (req, res) => {
       })
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000))
+    const otp = crypto.randomInt(100000, 1000000).toString()
 
     user.resetOtp = otp
-    user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000
+    user.resetOtpExpireAt = Date.now() + 10 * 60 * 1000
     await user.save()
 
     const mailOptions = {
