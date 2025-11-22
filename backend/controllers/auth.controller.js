@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import User from '../models/user.model.js'
 import transporter from '../config/nodemailer.js'
@@ -134,10 +135,10 @@ const sendVerifyOtp = async (req, res) => {
         message: 'Account Already verified',
       })
     }
-    const otp = String(Math.floor(100000 + Math.random() * 900000))
+    const otp = crypto.randomInt(100000, 1000000).toString()
 
     user.verifyOtp = otp
-    user.verifyOtpExpireAt = Date.now() + 24 * 60 * 60 * 1000
+    user.verifyOtpExpireAt = Date.now() + 10 * 60 * 1000
 
     await user.save()
     const mailOptions = {
